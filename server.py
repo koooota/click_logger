@@ -58,6 +58,19 @@ def view_log():
 
     return html
 
+from flask import send_file
+
+@app.route("/download")
+def download_csv():
+    log_type = request.args.get("q")
+    filename = os.path.join(CLICK_LOG_DIR, f"{log_type}.csv")
+
+    if not os.path.exists(filename):
+        return f"ファイル {filename} が存在しません。", 404
+
+    return send_file(filename, as_attachment=True)
+
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
