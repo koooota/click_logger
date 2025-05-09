@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import csv
 from datetime import datetime
+import pytz  # ← 追加（Renderではデフォで使えます）
 import os
 
 app = Flask(__name__)
@@ -20,10 +21,12 @@ os.makedirs(CLICK_LOG_DIR, exist_ok=True)
 @app.route("/click", methods=["POST"])
 def log_click():
     data = request.get_json()
-    button_type = data.get("button", "unknown")
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    button_type = data.get("button", "unknown")  # ← これが抜けていた！
 
-    # 保存先ファイルパスを関数内で定義
+    # 日本時間（JST）での現在時刻
+    jst = pytz.timezone('Asia/Tokyo')
+    timestamp = datetime.now(jst).strftime("%Y-%m-%d %H:%M:%S")
+
     filename = os.path.join(CLICK_LOG_DIR, f"{button_type}.csv")
 
     try:
@@ -33,10 +36,11 @@ def log_click():
         print("✅ 書き込み成功")
     except Exception as e:
         print("❌ 書き込み失敗:", e)
-    
+
     print("✅ CSV保存先：", filename)
 
     return jsonify({"status": "ok"})
+
 
 
 @app.route("/log")
