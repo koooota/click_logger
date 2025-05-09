@@ -26,9 +26,15 @@ def log_click():
     # 保存先ファイルパスを関数内で定義
     filename = os.path.join(CLICK_LOG_DIR, f"{button_type}.csv")
 
-    with open(filename, "a", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
-        writer.writerow([timestamp])
+    try:
+        with open(filename, "a", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            writer.writerow([timestamp])
+        print("✅ 書き込み成功")
+    except Exception as e:
+        print("❌ 書き込み失敗:", e)
+    
+    print("✅ CSV保存先：", filename)
 
     return jsonify({"status": "ok"})
 
@@ -56,3 +62,4 @@ def view_log():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
+    
