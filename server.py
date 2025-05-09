@@ -23,7 +23,28 @@ def log_click():
 
     return jsonify({"status": "ok"})
 
+@app.route("/log")
+def view_log():
+    log_type = request.args.get("q")
+    filename = f"{log_type}.csv"
+
+    if not os.path.exists(filename):
+        return f"ログファイル '{filename}' が存在しません。", 404
+
+    with open(filename, newline='', encoding='utf-8') as f:
+        reader = csv.reader(f)
+        rows = list(reader)
+
+    html = f"<h2>ログ: {filename}</h2><ul>"
+    for row in rows:
+        html += f"<li>{row[0]}</li>"
+    html += "</ul>"
+
+    return html
+
+
 if __name__ == "__main__":
     import os
     port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=True)
+    app.run(host="0.0.0.0", port=port, debug=True
+            )
