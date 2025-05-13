@@ -1,82 +1,39 @@
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-import csv
-from datetime import datetime
-import pytz  # ← 追加（Renderではデフォで使えます）
 import os
+import json
+import base64
+from flask import Flask, request
+from datetime import datetime
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+from io import StO
 
 app = Flask(__name__)
-CORS(app)
 
-# server.py のある場所
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# スプレッドシート名（任意）ringI
+SPREADSHEET_NAME = "click_log"
 
-# 1つ上にある "click_counter" フォルダ
-CLICK_LOG_DIR = os.path.abspath(os.path.join(BASE_DIR, "..", "click_counter"))
+# 環境変数から credentials.json を再現
+base64_creds = os.environ["GOOGLE_CREDENTIALS_BASE64"]
+creds_json = base64.b64decode(base64_creds).decode("utf-8")
+credentials_dict = json.loads(creds_json)
 
-# フォルダがなければ作成（初回起動時も安心）
-os.makedirs(CLICK_LOG_DIR, exist_ok=True)
-
+scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+credentials = ServiceAccountCredentials.from_json_keyfile_dict(credentials_dict, scope)
+gc = gspread.authorize(credentials)
 
 @app.route("/click", methods=["POST"])
 def log_click():
     data = request.get_json()
-    button_type = data.get("button", "unknown")  # ← これが抜けていた！
+    event = data.get("button", "unknown")
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # 日本時間（JST）での現在時刻
-    jst = pytz.timezone('Asia/Tokyo')
-    timestamp = datetime.now(jst).strftime("%Y-%m-%d %H:%M:%S")
-
-    filename = os.path.join(CLICK_LOG_DIR, f"{button_type}.csv")
+    sh = gc.open(SPREADSHEET_NAME)
 
     try:
-        with open(filename, "a", newline="", encoding="utf-8") as f:
-            writer = csv.writer(f)
-            writer.writerow([timestamp])
-        print("✅ 書き込み成功")
-    except Exception as e:
-        print("❌ 書き込み失敗:", e)
+        sheet = sh.worksheet(event)
+    except gspread.exceptions.WorksheetNotFound:
+        sheet = sh.add_worksheet(title=event, rows="1000", cols="2")
+        sheet.append_row(["timestamp", "event"])
 
-    print("✅ CSV保存先：", filename)
-
-    return jsonify({"status": "ok"})
-
-
-
-@app.route("/log")
-def view_log():
-    log_type = request.args.get("q")
-    filename = os.path.join(CLICK_LOG_DIR, f"{log_type}.csv")
-
-    if not os.path.exists(filename):
-        return f"ログファイル '{filename}' が存在しません。", 404
-
-    with open(filename, newline='', encoding='utf-8') as f:
-        reader = csv.reader(f)
-        rows = list(reader)
-
-    html = f"<h2>ログ: {log_type}.csv</h2><ul>"
-    for row in rows:
-        html += f"<li>{row[0]}</li>"
-    html += "</ul>"
-
-    return html
-
-from flask import send_file
-
-@app.route("/download")
-def download_csv():
-    log_type = request.args.get("q")
-    filename = os.path.join(CLICK_LOG_DIR, f"{log_type}.csv")
-
-    if not os.path.exists(filename):
-        return f"ファイル {filename} が存在しません。", 404
-
-    return send_file(filename, as_attachment=True)
-
-
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=True)
-    
+    sheet.append_row([timestamp, event])
+    return {"status": "ok"}

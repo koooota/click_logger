@@ -1,6 +1,0 @@
-services:
-  - type: web
-    name: click-logger
-    env: python
-    buildCommand: ""
-    startCommand: "python server.py"
