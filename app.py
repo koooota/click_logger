@@ -2,12 +2,14 @@ import os
 import json
 import base64
 from flask import Flask, request
+from flask_cors import CORS  # ← 追加
 from datetime import datetime
 from pytz import timezone
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
 app = Flask(__name__)
+CORS(app)  # ← 追加：すべてのリクエストにCORSを許可
 
 # スプレッドシート名（任意）
 SPREADSHEET_NAME = "click_log"
